@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OrgSense SII - Interactive Prototype</title>
+  <style>
+    :root {
+      --bg: #060d1b;
+      --panel: #0f1a31;
+      --panel-2: #162546;
+      --line: #2a3d6b;
+      --text: #e6eeff;
+      --muted: #9db1d9;
+      --accent: #4bb4ff;
+      --ok: #2ed9a3;
+      --warn: #ffc857;
+      --danger: #ff6d6d;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: radial-gradient(circle at 90% 0%, #183266 0%, var(--bg) 38%);
+      color: var(--text);
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 270px 1fr;
+      min-height: 100vh;
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      border-right: 1px solid var(--line);
+      background: rgba(6, 13, 27, 0.95);
+      padding: 20px 12px;
+    }
+    .sidebar::-webkit-scrollbar { width: 8px; }
+    .sidebar::-webkit-scrollbar-thumb { background: #253a66; border-radius: 8px; }
+    .brand {
+      padding: 0 8px 14px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 12px;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+    }
+    .brand p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .nav a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 10px 11px;
+      border-radius: 10px;
+      margin: 3px 0;
+      font-size: 13px;
+    }
+    .nav a.active {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid #355391;
+    }
+    .nav a:hover {
+      background: var(--panel-2);
+      color: var(--text);
+    }
+    .main {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      background: rgba(15, 26, 49, 0.88);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .hero h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    .hero-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    select {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+    .muted { color: var(--muted); }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 999px;
+      font-size: 12px;
+      padding: 6px 10px;
+    }
+    .stats {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+    .stat {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      transition: transform .2s ease;
+    }
+    .stat:hover { transform: translateY(-2px); }
+    .stat .k {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .stat .v {
+      font-size: 26px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+    .grid-2, .grid-3, .grid-4 {
+      display: grid;
+      gap: 10px;
+    }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .tile {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 11px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .tile b {
+      display: block;
+      margin-bottom: 4px;
+      color: #f2f6ff;
+      font-size: 13px;
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-2);
+      padding: 8px 11px;
+      font-size: 12px;
+      letter-spacing: 0.4px;
+    }
+    .live-layout {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 10px;
+    }
+    .bars {
+      display: grid;
+      gap: 8px;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 40px;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .bar-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #1f335d;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #4bb4ff, #2ed9a3);
+      width: 10%;
+      transition: width .5s ease;
+    }
+    .feed {
+      max-height: 230px;
+      overflow: auto;
+      display: grid;
+      gap: 6px;
+      padding-right: 4px;
+    }
+    .feed-item {
+      font-size: 12px;
+      border: 1px solid var(--line);
+      background: rgba(16, 30, 57, 0.95);
+      border-radius: 8px;
+      padding: 8px;
+    }
+    .journey-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .journey-table th, .journey-table td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px;
+      text-align: left;
+    }
+    .badge {
+      border-radius: 999px;
+      font-size: 10px;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      background: #1f335d;
+      display: inline-block;
+    }
+    .danger { color: var(--danger); }
+    .timeline {
+      display: grid;
+      gap: 8px;
+    }
+    .milestone {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-2);
+      padding: 9px 10px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    @media (max-width: 1180px) {
+      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .live-layout { grid-template-columns: 1fr; }
+      .pillars-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>OrgSense SII</h1>
+        <p>PRD v10 Full Feature UI</p>
+      </div>
+      <nav class="nav">
+        <a href="#overview">Overview</a>
+        <a href="#pillars">17 Pillars</a>
+        <a href="#workflow">SCDLA Workflow</a>
+        <a href="#collection">Data Collection</a>
+        <a href="#question-types">Question Types</a>
+        <a href="#ai">ARIA + SHAKTI + AI</a>
+        <a href="#analytics">Analytics & Dashboards</a>
+        <a href="#journey">Stakeholder Journey</a>
+        <a href="#actions">Actions & Escalations</a>
+        <a href="#social">Social Intelligence</a>
+        <a href="#integrations">Integrations</a>
+        <a href="#architecture">5-Layer Architecture</a>
+        <a href="#security">Security & Governance</a>
+        <a href="#delivery">MVP + Roadmap</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <section id="overview" class="card hero">
+        <div class="hero-top">
+          <h2>Stakeholder Insights Intelligence Platform</h2>
+          <div class="filters">
+            <select id="timeRange">
+              <option value="7">Last 7 days</option>
+              <option value="30" selected>Last 30 days</option>
+              <option value="90">Last 90 days</option>
+            </select>
+            <select id="stakeholderGroup">
+              <option value="all" selected>All Stakeholders</option>
+              <option value="employee">Employees</option>
+              <option value="customer">Customers</option>
+              <option value="investor">Investors</option>
+              <option value="partner">Partners</option>
+            </select>
+          </div>
+        </div>
+        <p class="muted">
+          AI-powered, always-on, multi-channel stakeholder intelligence platform with real-time dashboards,
+          SRM system of record, multilingual NLP coverage, and end-to-end action loop.
+        </p>
+        <div class="chips">
+          <span class="chip">172-page PRD scope</span>
+          <span class="chip">START - CREATE - DESIGN - LAUNCH - ANALYSE</span>
+          <span class="chip">Folder - File - Insighto Card hierarchy</span>
+          <span class="chip">100+ language support</span>
+          <span class="chip">WebSocket / SignalR live updates</span>
+        </div>
+      </section>
+
+      <section class="card stats" id="metrics">
+        <article class="stat"><div class="k">Stakeholder Trust Score</div><div class="v" data-metric="sts">0</div><div class="ok">Live composite score</div></article>
+        <article class="stat"><div class="k">Responses Captured</div><div class="v" data-metric="responses">0</div><div class="ok">Across all channels</div></article>
+        <article class="stat"><div class="k">Open Actions</div><div class="v" data-metric="actions">0</div><div class="warn">Needs closure</div></article>
+        <article class="stat"><div class="k">Risk Alerts</div><div class="v" data-metric="alerts">0</div><div class="danger">Priority tracking</div></article>
+      </section>
+
+      <section id="pillars" class="card">
+        <h3 class="section-title">17 Product Differentiation Pillars</h3>
+        <div class="pillars-grid">
+          <div class="tile"><b>1. Always-On Intelligence</b>Live real-time signal ingestion and dashboard refresh.</div>
+          <div class="tile"><b>2. Organisation-Wide Coverage</b>Employees, customers, investors, regulators, suppliers, community.</div>
+          <div class="tile"><b>3. AI Questionnaire Creation</b>Generate optimised instruments from natural language briefs.</div>
+          <div class="tile"><b>4. Beyond-Forms Capture</b>Voice, chat, non-form ingestion, and diverse intelligence cards.</div>
+          <div class="tile"><b>5. Journey Mapping</b>Track stakeholder signals across time and touchpoints.</div>
+          <div class="tile"><b>6. Offline-Online Bridge</b>Digitise paper and physical forms into intelligence streams.</div>
+          <div class="tile"><b>7. Predictive + Prescriptive AI</b>Forecast trajectories and recommend interventions.</div>
+          <div class="tile"><b>8. Trust Score (STS)</b>Composite 0-100 relationship health index.</div>
+          <div class="tile"><b>9. ARIA Executive Advisor</b>AI companion for CXO and board decision support.</div>
+          <div class="tile"><b>10. Brand Assets</b>Enterprise-controlled asset library across capture and reports.</div>
+          <div class="tile"><b>11. Global Multi-language NLP</b>Azure Cognitive Services, auto-detect, translation, sentiment, NER.</div>
+          <div class="tile"><b>12. Product Knowledge Base</b>In-app help drawer plus external help portal.</div>
+          <div class="tile"><b>13. SRM Moat</b>Unified master stakeholder record across all stakeholder groups.</div>
+          <div class="tile"><b>14. System-of-Record Workflow</b>Capture to close-the-loop in one operating system.</div>
+          <div class="tile"><b>15. Compliance Trust Infrastructure</b>DPDP, GDPR, SOC2, ISO27001 and auditable controls.</div>
+          <div class="tile"><b>16. Open Integration Ecosystem</b>CRM, HRIS, messaging, BI, APIs, webhooks, OpenAPI.</div>
+          <div class="tile"><b>17. Longitudinal Benchmark Moat</b>Compounding multi-year intelligence and benchmarks.</div>
+        </div>
+      </section>
+
+      <section class="card live-layout">
+        <article>
+          <h3 class="section-title">Live Channel Ingestion</h3>
+          <div class="bars" id="channelBars"></div>
+        </article>
+        <article>
+          <h3 class="section-title">Signal Feed</h3>
+          <div class="feed" id="signalFeed"></div>
+        </article>
+      </section>
+
+      <section id="workflow" class="card">
+        <h3 class="section-title">Core Workflow + Hierarchy</h3>
+        <div class="flow">
+          <span class="step">START</span>
+          <span class="step">CREATE</span>
+          <span class="step">DESIGN</span>
+          <span class="step">LAUNCH</span>
+          <span class="step">ANALYSE</span>
+        </div>
+        <div class="flow" style="margin-top:10px;">
+          <span class="step">Folder</span>
+          <span class="step">File</span>
+          <span class="step">Insighto Card</span>
+        </div>
+      </section>
+
+      <section id="collection" class="card">
+        <h3 class="section-title">Data Collection Engine</h3>
+        <div class="grid-3">
+          <div class="tile"><b>Form Type Selector</b>Purpose-built intelligence capture choice at creation stage.</div>
+          <div class="tile"><b>AI Creation Engine</b>Question and structure generation from business brief.</div>
+          <div class="tile"><b>Insight Canvas</b>Custom charting and intelligence composition canvas.</div>
+          <div class="tile"><b>Brand Asset Library</b>Brand-safe distribution assets and visual controls.</div>
+          <div class="tile"><b>Template Library</b>Ready models for rapid deployment and reuse.</div>
+          <div class="tile"><b>Distribution Engine</b>Email, WhatsApp, QR, links, and channel routing.</div>
+          <div class="tile"><b>Preview + Slideshow</b>Stakeholder-facing and executive-facing preview modes.</div>
+          <div class="tile"><b>Reminders</b>Automated follow-up and response nudges.</div>
+          <div class="tile"><b>Offline Entry Module</b>Physical/paper intake to digital form ingestion.</div>
+        </div>
+      </section>
+
+      <section id="question-types" class="card">
+        <h3 class="section-title">Question & Response Modes</h3>
+        <div class="grid-4">
+          <div class="tile">Single Select</div>
+          <div class="tile">Multi Select</div>
+          <div class="tile">Rating / Likert</div>
+          <div class="tile">NPS</div>
+          <div class="tile">Text / Long Text</div>
+          <div class="tile">Matrix</div>
+          <div class="tile">Dropdown</div>
+          <div class="tile">Date / Time</div>
+          <div class="tile">Number</div>
+          <div class="tile">File Upload</div>
+          <div class="tile">Voice Response</div>
+          <div class="tile">Image-based</div>
+          <div class="tile">Video Response</div>
+          <div class="tile">Checklist</div>
+          <div class="tile">Evaluation</div>
+          <div class="tile">Self-Assessment</div>
+        </div>
+      </section>
+
+      <section id="ai" class="card">
+        <h3 class="section-title">AI Intelligence Stack</h3>
+        <div class="grid-3">
+          <div class="tile"><b>ARIA</b>Executive assistant, digest generation, guided decision support.</div>
+          <div class="tile"><b>SHAKTI Framework</b>11 agentic domains for autonomous and hybrid intelligence tasks.</div>
+          <div class="tile"><b>NLP Pipeline</b>Sentiment, topic extraction, entity analysis, and language processing.</div>
+          <div class="tile"><b>Predictive Engine</b>30/60/90-day stakeholder trajectory forecasting.</div>
+          <div class="tile"><b>Anomaly Detection</b>Trust score dips, cluster shifts, and sudden risk alerts.</div>
+          <div class="tile"><b>Automation Layer</b>Rules + AI hybrid orchestration workflows.</div>
+        </div>
+      </section>
+
+      <section id="analytics" class="card">
+        <h3 class="section-title">Dashboards & Intelligence Products</h3>
+        <div class="grid-3">
+          <div class="tile"><b>CXO Executive Dashboard</b>High-level priorities and intervention queue.</div>
+          <div class="tile"><b>Board Dashboard</b>Strategic health, trends, and risk intelligence.</div>
+          <div class="tile"><b>Functional Reports</b>Department-level operational intelligence views.</div>
+          <div class="tile"><b>Special Reports</b>Crisis, compliance, and campaign diagnostics.</div>
+          <div class="tile"><b>Export Suite</b>PDF/Excel branded exports for enterprise workflows.</div>
+          <div class="tile"><b>Live Tiles</b>SignalR/WebSocket auto-refresh visual components.</div>
+        </div>
+      </section>
+
+      <section id="journey" class="card">
+        <h3 class="section-title">Stakeholder Journey + SRM Record</h3>
+        <div class="grid-2">
+          <div class="tile">
+            <b>Journey Record</b>
+            Track each stakeholder timeline, touchpoint events, sentiment arcs, and interaction history.
+          </div>
+          <div class="tile">
+            <b>SRM Master</b>
+            Unified identity, category/sub-groups, demographics, consent status, and engagement metrics.
+          </div>
+          <div class="tile">
+            <b>Geo Hierarchy</b>
+            Country -> Region -> Zone -> Branch -> Location aligned with org hierarchy.
+          </div>
+          <div class="tile">
+            <b>Closed-Loop Trace</b>
+            You Said We Did communications linked to actions and outcomes.
+          </div>
+        </div>
+        <div style="margin-top:12px; overflow:auto;">
+          <table class="journey-table">
+            <thead>
+              <tr>
+                <th>Stakeholder</th>
+                <th>Group</th>
+                <th>Last Signal</th>
+                <th>Sentiment</th>
+                <th>Trust Score</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="journeyRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="actions" class="card">
+        <h3 class="section-title">Actions, Escalations, Communication</h3>
+        <div class="grid-3">
+          <div class="tile"><b>Action Tracker</b>Create, assign, monitor, and close actions per insight.</div>
+          <div class="tile"><b>Digital Escalation</b>Four-severity framework for exception routing.</div>
+          <div class="tile"><b>Two-Way Communication</b>Stakeholder responses and follow-up loop.</div>
+          <div class="tile"><b>Virtual Focus Groups</b>AI-assisted cohort engagement and synthesis.</div>
+          <div class="tile"><b>Whistleblower Flow</b>Confidential intake, protection, and governance workflows.</div>
+          <div class="tile"><b>Impact Tracking</b>Outcome monitoring for action effectiveness.</div>
+        </div>
+      </section>
+
+      <section id="social" class="card">
+        <h3 class="section-title">Social Intelligence</h3>
+        <div class="grid-3">
+          <div class="tile"><b>Topic-Aligned Monitoring</b>Stakeholder theme tracking across social channels.</div>
+          <div class="tile"><b>Cross-Platform Synthesis</b>Unified signal merging across channels.</div>
+          <div class="tile"><b>Sentiment Overlay</b>Public signal comparison with private stakeholder data.</div>
+        </div>
+      </section>
+
+      <section id="integrations" class="card">
+        <h3 class="section-title">Integration Ecosystem</h3>
+        <div class="grid-4">
+          <div class="tile"><b>CRM</b>Salesforce, HubSpot, Zoho, Dynamics 365</div>
+          <div class="tile"><b>HRIS</b>Workday, SAP SuccessFactors, BambooHR, Darwinbox</div>
+          <div class="tile"><b>Email</b>Mailchimp, SendGrid, SES</div>
+          <div class="tile"><b>Messaging</b>Twilio, WhatsApp BSPs, Slack, MS Teams</div>
+          <div class="tile"><b>BI</b>Power BI, Tableau, Looker</div>
+          <div class="tile"><b>Platform APIs</b>REST APIs + webhook events + OpenAPI</div>
+          <div class="tile"><b>Automation</b>Zapier ecosystem connectors</div>
+          <div class="tile"><b>Data Import</b>External survey tools and CSV/batch ingestion</div>
+        </div>
+      </section>
+
+      <section id="architecture" class="card">
+        <h3 class="section-title">Technical Architecture</h3>
+        <div class="flow">
+          <span class="step">Layer 1: Ingestion Engine</span>
+          <span class="step">Layer 2: Intelligence Layer</span>
+          <span class="step">Layer 3: Segmentation Layer</span>
+          <span class="step">Layer 4: Action/Decision Layer</span>
+          <span class="step">Layer 5: Dashboard Layer</span>
+        </div>
+      </section>
+
+      <section id="security" class="card">
+        <h3 class="section-title">Security, RBAC, Compliance</h3>
+        <div class="grid-3">
+          <div class="tile"><b>Security Controls</b>Tenant isolation, encryption, and secure workflows.</div>
+          <div class="tile"><b>RBAC</b>Role-based access for granular feature and data control.</div>
+          <div class="tile"><b>Governance</b>Consent records, auditability, and residency controls.</div>
+          <div class="tile"><b>Standards</b>DPDP, GDPR, SOC 2 Type II, ISO 27001 posture.</div>
+          <div class="tile"><b>Whistleblower Audit</b>Break-glass monitored decryption procedures.</div>
+          <div class="tile"><b>Data Governance</b>Retention, erasure, and lawful basis enforcement.</div>
+        </div>
+      </section>
+
+      <section id="delivery" class="card">
+        <h3 class="section-title">Delivery Plan</h3>
+        <div class="grid-3">
+          <div class="tile"><b>MVP</b>25 priority features including workflow, AI creation, STS, dashboards, RBAC, consent.</div>
+          <div class="tile"><b>Phase 2</b>Advanced analytics, deeper automations, expanded integrations and social intelligence.</div>
+          <div class="tile"><b>Sprints</b>Roadmap structured in phased sprint plan for iterative release.</div>
+        </div>
+        <div class="timeline" style="margin-top:10px;">
+          <div class="milestone"><span>Sprint 1-2: Core SCDLA + Form Engine</span><span class="badge">In Progress</span></div>
+          <div class="milestone"><span>Sprint 3-4: Real-time Dashboards + STS + NLP</span><span class="badge">Planned</span></div>
+          <div class="milestone"><span>Sprint 5: Integrations + RBAC + Compliance</span><span class="badge">Planned</span></div>
+          <div class="milestone"><span>Sprint 6: Action Tracker + Exports + Hardening</span><span class="badge">Planned</span></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    const mockByGroup = {
+      all: { sts: 84.2, responses: 18432, actions: 136, alerts: 7 },
+      employee: { sts: 82.7, responses: 6211, actions: 58, alerts: 3 },
+      customer: { sts: 86.1, responses: 7934, actions: 42, alerts: 2 },
+      investor: { sts: 79.9, responses: 1422, actions: 19, alerts: 1 },
+      partner: { sts: 83.5, responses: 2865, actions: 17, alerts: 1 }
+    };
+
+    const channelSeries = {
+      "Email": 74,
+      "WhatsApp": 88,
+      "Web Form": 66,
+      "Voice": 52,
+      "Social": 61,
+      "Offline Digitized": 40
+    };
+
+    const feedEvents = [
+      "Customer signal spike detected in West region.",
+      "Voice transcript flagged for high escalation risk.",
+      "New grievance card launched to branch managers.",
+      "STS dipped by 3.1 for Supplier segment.",
+      "Whistleblower intake acknowledged and encrypted.",
+      "You Said We Did update delivered to 2,400 users."
+    ];
+
+    const journeyData = [
+      ["Anita Verma", "Customer", "NPS + Comment", "Positive", 88, "Engaged"],
+      ["Rakesh Menon", "Employee", "Grievance Form", "Negative", 63, "Needs Action"],
+      ["Asha Patel", "Partner", "WhatsApp Reply", "Neutral", 79, "Monitoring"],
+      ["Global Equity LLP", "Investor", "Quarterly Pulse", "Neutral", 76, "Stable"],
+      ["Rina Das", "Customer", "Voice Response", "Positive", 91, "Advocate"]
+    ];
+
+    function formatNumber(v) {
+      return Number(v).toLocaleString("en-IN");
+    }
+
+    function animateValue(el, target, decimals = 0) {
+      const start = 0;
+      const duration = 700;
+      const startTime = performance.now();
+      function update(now) {
+        const p = Math.min((now - startTime) / duration, 1);
+        const val = start + (target - start) * p;
+        el.textContent = decimals ? val.toFixed(decimals) : formatNumber(Math.round(val));
+        if (p < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
+    }
+
+    function renderMetrics() {
+      const group = document.getElementById("stakeholderGroup").value;
+      const timeRange = Number(document.getElementById("timeRange").value);
+      const base = mockByGroup[group];
+      const scale = timeRange === 7 ? 0.38 : timeRange === 90 ? 1.55 : 1;
+      const values = {
+        sts: Math.min(99.9, Math.max(40, base.sts + (Math.random() * 1.4 - 0.7))),
+        responses: Math.round(base.responses * scale),
+        actions: Math.round(base.actions * (timeRange === 7 ? 0.45 : timeRange === 90 ? 1.8 : 1)),
+        alerts: Math.max(1, Math.round(base.alerts + (Math.random() * 2 - 1)))
+      };
+      animateValue(document.querySelector('[data-metric="sts"]'), values.sts, 1);
+      animateValue(document.querySelector('[data-metric="responses"]'), values.responses);
+      animateValue(document.querySelector('[data-metric="actions"]'), values.actions);
+      animateValue(document.querySelector('[data-metric="alerts"]'), values.alerts);
+    }
+
+    function renderChannels() {
+      const wrap = document.getElementById("channelBars");
+      wrap.innerHTML = "";
+      Object.entries(channelSeries).forEach(([name, value]) => {
+        const row = document.createElement("div");
+        row.className = "bar-row";
+        row.innerHTML = '<span>' + name + '</span><div class="bar-track"><div class="bar-fill"></div></div><strong>' + value + '%</strong>';
+        wrap.appendChild(row);
+        requestAnimationFrame(() => {
+          row.querySelector(".bar-fill").style.width = value + "%";
+        });
+      });
+    }
+
+    function renderFeed() {
+      const feed = document.getElementById("signalFeed");
+      feed.innerHTML = "";
+      feedEvents.forEach((t, i) => {
+        const item = document.createElement("div");
+        item.className = "feed-item";
+        item.innerHTML = '<span class="badge">T-' + (6 - i) + 'm</span><div style="margin-top:6px;">' + t + '</div>';
+        feed.appendChild(item);
+      });
+    }
+
+    function renderJourney() {
+      const rows = document.getElementById("journeyRows");
+      rows.innerHTML = "";
+      journeyData.forEach((r) => {
+        const tr = document.createElement("tr");
+        const sentimentClass = r[3] === "Negative" ? "danger" : r[3] === "Positive" ? "ok" : "warn";
+        tr.innerHTML =
+          "<td>" + r[0] + "</td>" +
+          "<td>" + r[1] + "</td>" +
+          "<td>" + r[2] + "</td>" +
+          '<td class="' + sentimentClass + '">' + r[3] + "</td>" +
+          "<td>" + r[4] + "</td>" +
+          "<td><span class='badge'>" + r[5] + "</span></td>";
+        rows.appendChild(tr);
+      });
+    }
+
+    function setupActiveNav() {
+      const links = [...document.querySelectorAll(".nav a")];
+      const sections = links.map((l) => document.querySelector(l.getAttribute("href")));
+      function update() {
+        let idx = 0;
+        sections.forEach((s, i) => {
+          if (s.getBoundingClientRect().top <= 120) idx = i;
+        });
+        links.forEach((l) => l.classList.remove("active"));
+        links[idx].classList.add("active");
+      }
+      window.addEventListener("scroll", update, { passive: true });
+      update();
+    }
+
+    function setupRealtimePulse() {
+      setInterval(() => {
+        const keys = Object.keys(channelSeries);
+        const key = keys[Math.floor(Math.random() * keys.length)];
+        const delta = Math.random() > 0.5 ? 1 : -1;
+        channelSeries[key] = Math.min(96, Math.max(25, channelSeries[key] + delta));
+        renderChannels();
+        renderMetrics();
+      }, 5000);
+    }
+
+    document.getElementById("timeRange").addEventListener("change", renderMetrics);
+    document.getElementById("stakeholderGroup").addEventListener("change", renderMetrics);
+
+    renderMetrics();
+    renderChannels();
+    renderFeed();
+    renderJourney();
+    setupActiveNav();
+    setupRealtimePulse();
+  </script>
+</body>
+</html>
