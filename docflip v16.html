@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DocFlip</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.2.2/docx.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#0f0f13;color:#e8e8f0;min-height:100vh}
+.topbar{background:#0f0f13;border-bottom:1px solid #2a2a3a;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.5px}
+.logo span{color:#7c6cf8}
+.disclaimer{background:#1a1a2e;border:1px solid #2a2a44;border-left:3px solid #7c6cf8;padding:10px 16px;font-size:12px;color:#9090b0;line-height:1.6}
+.tabs{display:flex;gap:4px;padding:20px 24px 0;border-bottom:1px solid #2a2a3a;background:#0f0f13}
+.tab{padding:10px 20px;border-radius:8px 8px 0 0;cursor:pointer;font-size:14px;font-weight:500;color:#7070a0;border:1px solid transparent;border-bottom:none;transition:all .2s}
+.tab.active{background:#1a1a2e;color:#e8e8f0;border-color:#2a2a44}
+.tab:hover:not(.active){color:#c0c0e0}
+.content{padding:24px;display:none}
+.content.active{display:block}
+.upload-zone{border:2px dashed #2a2a4a;border-radius:12px;padding:48px 24px;text-align:center;cursor:pointer;transition:all .2s;background:#13131f}
+.upload-zone:hover,.upload-zone.drag{border-color:#7c6cf8;background:#16162a}
+.upload-icon{font-size:36px;margin-bottom:12px}
+.upload-title{font-size:18px;font-weight:600;margin-bottom:6px}
+.upload-sub{font-size:13px;color:#6060a0}
+input[type=file]{display:none}
+.btn{background:#7c6cf8;color:#fff;border:none;padding:10px 22px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;transition:all .2s}
+.btn:hover{background:#6a5be0}
+.btn:disabled{background:#3a3a5a;color:#6060a0;cursor:not-allowed}
+.convert-options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}
+.option-card{background:#1a1a2e;border:2px solid #2a2a44;border-radius:12px;padding:20px;cursor:pointer;transition:all .2s;text-align:center}
+.option-card:hover{border-color:#7c6cf8}
+.option-card.selected{border-color:#7c6cf8;background:#1e1e38}
+.option-label{font-size:15px;font-weight:600;margin-bottom:2px}
+.option-sub{font-size:12px;color:#6060a0;margin-top:6px}
+.arrow{font-size:18px;margin:4px 0;color:#7c6cf8}
+.file-info{background:#1a1a2e;border:1px solid #2a2a44;border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+.file-name{font-size:14px;font-weight:500;color:#c0c0e0;word-break:break-all}
+.file-size{font-size:12px;color:#6060a0;margin-top:2px}
+.status{margin-top:12px;font-size:13px;padding:10px 14px;border-radius:8px;line-height:1.5}
+.status.success{background:#0d2a1a;border:1px solid #1a5a2a;color:#4dca7a}
+.status.error{background:#2a0d0d;border:1px solid #5a1a1a;color:#ca4d4d}
+.status.info{background:#1a1a2e;border:1px solid #2a2a44;color:#9090c0}
+.viewer{background:#1a1a2e;border:1px solid #2a2a44;border-radius:12px;padding:20px;margin-top:16px;min-height:400px;max-height:640px;overflow-y:auto}
+#pdf-canvas-container{display:flex;flex-direction:column;gap:8px;align-items:center}
+canvas{max-width:100%;border:1px solid #2a2a3a;border-radius:4px}
+.docx-content{line-height:1.7;font-size:14px;color:#d0d0e8}
+.docx-content h1{font-size:22px;color:#f0f0ff;margin:16px 0 8px;font-weight:700}
+.docx-content h2{font-size:18px;color:#e8e8ff;margin:14px 0 6px;font-weight:600}
+.docx-content h3{font-size:15px;color:#e0e0ff;margin:10px 0 4px;font-weight:600}
+.docx-content h4{font-size:13px;color:#d8d8ff;margin:8px 0 4px;font-weight:600}
+.docx-content p{margin-bottom:8px}
+.docx-content ul,.docx-content ol{margin:8px 0 8px 24px}
+.docx-content li{margin-bottom:4px}
+.docx-content table{border-collapse:collapse;width:100%;margin-bottom:12px;font-size:13px}
+.docx-content td,.docx-content th{border:1px solid #3a3a5a;padding:7px 10px}
+.docx-content th{background:#2a2a44;font-weight:600;color:#d0d0ff}
+.docx-content strong{color:#e8e8ff}
+.docx-content em{color:#c8c8f0}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.page-nav{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.page-nav button{background:#2a2a3a;border:none;color:#e8e8f0;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;transition:background .2s}
+.page-nav button:hover{background:#3a3a4a}
+.page-nav button:disabled{opacity:0.4;cursor:not-allowed}
+.page-info{font-size:13px;color:#8080a0}
+.ad-slot{background:#13131f;border:1px dashed #2a2a3a;border-radius:8px;padding:14px;text-align:center;font-size:11px;color:#4a4a6a;margin:12px 24px}
+.progress{height:4px;background:#2a2a4a;border-radius:2px;overflow:hidden;margin-top:10px}
+.progress-bar{height:100%;background:#7c6cf8;width:0%;transition:width .3s;border-radius:2px}
+.clear-btn{background:transparent;border:none;color:#6060a0;cursor:pointer;font-size:12px;padding:4px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.clear-btn:hover{color:#a0a0c0;background:#2a2a3a}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Doc<span>Flip</span></div>
+  <div style="font-size:12px;color:#5050a0">free · private · browser-only</div>
+</div>
+
+<div style="padding:10px 24px;background:#0a0a14">
+  <div class="disclaimer">
+    🔒 <strong style="color:#9090c0">we render everything on your system only and never collect any info — your info is safe with you as we do not want your data.</strong> do support us by allowing ads. thats it peace out thanks
+  </div>
+</div>
+
+<div class="ad-slot">— advertisement —</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('convert')">Convert</div>
+  <div class="tab" onclick="switchTab('view')">View</div>
+</div>
+
+<!-- CONVERT TAB -->
+<div id="tab-convert" class="content active">
+  <div class="convert-options">
+    <div class="option-card selected" id="opt-d2p" onclick="selectConvert('d2p')">
+      <div class="option-label">.docx</div>
+      <div class="arrow">↓</div>
+      <div class="option-label">.pdf</div>
+      <div class="option-sub">Word to PDF</div>
+    </div>
+    <div class="option-card" id="opt-p2d" onclick="selectConvert('p2d')">
+      <div class="option-label">.pdf</div>
+      <div class="arrow">↓</div>
+      <div class="option-label">.docx</div>
+      <div class="option-sub">PDF to Word</div>
+    </div>
+  </div>
+
+  <div id="convert-upload" class="upload-zone" style="margin-top:16px"
+    onclick="document.getElementById('convert-file').click()"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="handleDrop(event,'convert')">
+    <div class="upload-icon">📂</div>
+    <div class="upload-title">Drop your file here</div>
+    <div class="upload-sub" id="convert-accept-hint">Accepts .docx files</div>
+    <input type="file" id="convert-file" accept=".docx" onchange="fileChosen(this,'convert')"/>
+  </div>
+
+  <div id="convert-file-info" style="display:none">
+    <div class="file-info">
+      <div style="min-width:0">
+        <div class="file-name" id="convert-fname"></div>
+        <div class="file-size" id="convert-fsize"></div>
+      </div>
+      <button class="clear-btn" onclick="clearFile('convert')">✕ clear</button>
+    </div>
+    <div class="progress"><div class="progress-bar" id="convert-progress"></div></div>
+    <div class="actions">
+      <button class="btn" id="convert-btn" onclick="doConvert()">Convert &amp; Download</button>
+    </div>
+    <div id="convert-status" style="display:none" class="status"></div>
+  </div>
+</div>
+
+<!-- VIEW TAB -->
+<div id="tab-view" class="content">
+  <div id="view-upload" class="upload-zone"
+    onclick="document.getElementById('view-file').click()"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="handleDrop(event,'view')">
+    <div class="upload-icon">👁️</div>
+    <div class="upload-title">Upload to view</div>
+    <div class="upload-sub">Accepts .pdf and .docx files</div>
+    <input type="file" id="view-file" accept=".pdf,.docx" onchange="fileChosen(this,'view')"/>
+  </div>
+
+  <div id="view-file-info" style="display:none">
+    <div class="file-info">
+      <div style="min-width:0">
+        <div class="file-name" id="view-fname"></div>
+        <div class="file-size" id="view-fsize"></div>
+      </div>
+      <button class="clear-btn" onclick="clearFile('view')">✕ clear</button>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="doView()">View Document</button>
+    </div>
+    <div id="view-status" style="display:none" class="status"></div>
+  </div>
+
+  <div id="viewer-area" style="display:none">
+    <div class="page-nav" id="pdf-nav" style="display:none">
+      <button id="btn-prev" onclick="prevPage()">← prev</button>
+      <span class="page-info" id="page-info">Page 1 of 1</span>
+      <button id="btn-next" onclick="nextPage()">next →</button>
+    </div>
+    <div class="viewer">
+      <div id="pdf-canvas-container"></div>
+      <div id="docx-content" class="docx-content"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ad-slot">— advertisement —</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let convertMode = 'd2p';
+let convertFile = null, viewFile = null;
+let pdfDoc = null, curPage = 1, totalPages = 1;
+let rendering = false;
+
+/* ---------- TAB ---------- */
+function switchTab(t) {
+  ['convert','view'].forEach((n,i) => {
+    document.querySelectorAll('.tab')[i].classList.toggle('active', n === t);
+    document.getElementById('tab-'+n).classList.toggle('active', n === t);
+  });
+}
+
+/* ---------- MODE ---------- */
+function selectConvert(m) {
+  convertMode = m;
+  document.getElementById('opt-d2p').classList.toggle('selected', m==='d2p');
+  document.getElementById('opt-p2d').classList.toggle('selected', m==='p2d');
+  document.getElementById('convert-file').accept = m==='d2p' ? '.docx' : '.pdf';
+  document.getElementById('convert-accept-hint').textContent = m==='d2p' ? 'Accepts .docx files' : 'Accepts .pdf files';
+  clearFile('convert');
+}
+
+/* ---------- FILE HELPERS ---------- */
+function fmt(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+
+function fileChosen(inp, ctx) {
+  const f = inp.files[0]; if (!f) return;
+  setFileUI(ctx, f);
+}
+
+function handleDrop(e, ctx) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag');
+  const f = e.dataTransfer.files[0]; if (!f) return;
+  if (ctx === 'convert') {
+    const ext = f.name.split('.').pop().toLowerCase();
+    const ok = convertMode === 'd2p' ? ext === 'docx' : ext === 'pdf';
+    if (!ok) { setStatus('convert','error','Wrong file type for selected conversion.'); return; }
+  }
+  setFileUI(ctx, f);
+}
+
+function setFileUI(ctx, f) {
+  if (ctx === 'convert') {
+    convertFile = f;
+    document.getElementById('convert-fname').textContent = f.name;
+    document.getElementById('convert-fsize').textContent = fmt(f.size);
+    document.getElementById('convert-file-info').style.display = 'block';
+    document.getElementById('convert-status').style.display = 'none';
+    setProgress('convert', 0);
+  } else {
+    viewFile = f;
+    document.getElementById('view-fname').textContent = f.name;
+    document.getElementById('view-fsize').textContent = fmt(f.size);
+    document.getElementById('view-file-info').style.display = 'block';
+    document.getElementById('view-status').style.display = 'none';
+    document.getElementById('viewer-area').style.display = 'none';
+  }
+}
+
+function clearFile(ctx) {
+  if (ctx === 'convert') {
+    convertFile = null;
+    document.getElementById('convert-file').value = '';
+    document.getElementById('convert-file-info').style.display = 'none';
+    document.getElementById('convert-status').style.display = 'none';
+    setProgress('convert', 0);
+  } else {
+    viewFile = null;
+    document.getElementById('view-file').value = '';
+    document.getElementById('view-file-info').style.display = 'none';
+    document.getElementById('viewer-area').style.display = 'none';
+    document.getElementById('view-status').style.display = 'none';
+  }
+}
+
+function setStatus(ctx, type, msg) {
+  const el = document.getElementById(ctx+'-status');
+  el.className = 'status ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function setProgress(ctx, pct) {
+  const bar = document.getElementById(ctx+'-progress');
+  if (bar) bar.style.width = pct + '%';
+}
+
+/* ---------- SANITIZE ---------- */
+function sanitize(str) {
+  if (!str) return '';
+  return str
+    .replace(/₹/g,'Rs.').replace(/€/g,'EUR').replace(/£/g,'GBP').replace(/¥/g,'JPY')
+    .replace(/©/g,'(c)').replace(/®/g,'(R)').replace(/™/g,'(TM)')
+    .replace(/–/g,'-').replace(/—/g,'--')
+    .replace(/['']/g,"'").replace(/[""]/g,'"')
+    .replace(/…/g,'...').replace(/•/g,'*').replace(/·/g,'*')
+    .replace(/\u00a0/g,' ')
+    .replace(/[^\x00-\x7F]/g,'?')
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g,'');
+}
+
+/* ---------- CONVERT DISPATCHER ---------- */
+async function doConvert() {
+  if (!convertFile) return;
+  const btn = document.getElementById('convert-btn');
+  btn.disabled = true; btn.textContent = 'Converting...';
+  setProgress('convert', 5);
+  setStatus('convert','info','Processing your file locally...');
+  try {
+    if (convertMode === 'd2p') await docxToPdf();
+    else await pdfToDocx();
+  } catch(e) {
+    setStatus('convert','error','Error: ' + e.message);
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = 'Convert & Download';
+}
+
+/* ---------- DOCX → PDF ---------- */
+function getSegments(el, inheritBold, inheritItalic, baseSize) {
+  const segs = [];
+  const tag = el.tagName ? el.tagName.toLowerCase() : '';
+  const bold = inheritBold || ['b','strong','h1','h2','h3','h4'].includes(tag);
+  const italic = inheritItalic || ['i','em'].includes(tag);
+  for (const child of el.childNodes) {
+    if (child.nodeType === 3) {
+      const txt = sanitize(child.textContent);
+      if (txt.trim()) segs.push({ text: txt, bold, italic, sz: baseSize });
+    } else if (child.nodeType === 1) {
+      segs.push(...getSegments(child, bold, italic, baseSize));
+    }
+  }
+  return segs;
+}
+
+async function docxToPdf() {
+  const ab = await convertFile.arrayBuffer();
+  setProgress('convert', 15);
+  setStatus('convert','info','Parsing document...');
+
+  const res = await mammoth.convertToHtml({ arrayBuffer: ab, styleMap: [
+    "p[style-name='Heading 1'] => h1",
+    "p[style-name='Heading 2'] => h2",
+    "p[style-name='Heading 3'] => h3",
+    "p[style-name='Heading 4'] => h4",
+  ]});
+  setProgress('convert', 40);
+
+  const domParser = new DOMParser();
+  const parsed = domParser.parseFromString(res.value, 'text/html');
+
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const pdf = await PDFDocument.create();
+  const font    = await pdf.embedFont(StandardFonts.Helvetica);
+  const bFont   = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const iFont   = await pdf.embedFont(StandardFonts.HelveticaOblique);
+  const biFont  = await pdf.embedFont(StandardFonts.HelveticaBoldOblique);
+
+  const PW = 595, PH = 842, ML = 60, MR = 60, MT = 60, MB = 60;
+  let page = pdf.addPage([PW, PH]);
+  let y = PH - MT;
+
+  const newPage = () => { page = pdf.addPage([PW, PH]); y = PH - MT; };
+
+  const pickFont = (bold, italic) =>
+    bold && italic ? biFont : bold ? bFont : italic ? iFont : font;
+
+  function wrapSegments(segments, maxW) {
+    const lines = []; let curLine = [], curW = 0;
+    for (const seg of segments) {
+      const f = pickFont(seg.bold, seg.italic);
+      const words = seg.text.split(/(\s+)/);
+      for (const w of words) {
+        if (!w) continue;
+        const isSpace = /^\s+$/.test(w);
+        const ww = f.widthOfTextAtSize(isSpace ? ' ' : w, seg.sz);
+        if (!isSpace && curW + ww > maxW && curLine.length) {
+          lines.push(curLine); curLine = []; curW = 0;
+        }
+        curLine.push({ text: isSpace ? ' ' : w, bold: seg.bold, italic: seg.italic, sz: seg.sz });
+        curW += ww;
+      }
+    }
+    if (curLine.length) lines.push(curLine);
+    return lines;
+  }
+
+  function drawLines(lines, indent, lineH, color) {
+    for (const line of lines) {
+      if (y < MB + lineH) newPage();
+      let x = ML + indent;
+      for (const tok of line) {
+        const f = pickFont(tok.bold, tok.italic);
+        page.drawText(tok.text, { x, y, size: tok.sz, font: f, color: color || rgb(0.08,0.08,0.08) });
+        x += f.widthOfTextAtSize(tok.text, tok.sz);
+      }
+      y -= lineH;
+    }
+  }
+
+  function drawBlock(segs, opts = {}) {
+    const { indent=0, sz=11, spaceBefore=4, spaceAfter=6 } = opts;
+    const maxW = PW - ML - MR - indent;
+    const lineH = sz * 1.5;
+    y -= spaceBefore;
+    const lines = wrapSegments(segs, maxW);
+    drawLines(lines, indent, lineH);
+    y -= spaceAfter;
+  }
+
+  setProgress('convert', 60);
+  setStatus('convert','info','Building PDF pages...');
+
+  for (const el of parsed.body.children) {
+    const tag = el.tagName.toLowerCase();
+
+    if (tag === 'h1') {
+      drawBlock(getSegments(el,true,false,22), {sz:22,spaceBefore:16,spaceAfter:8});
+    } else if (tag === 'h2') {
+      drawBlock(getSegments(el,true,false,17), {sz:17,spaceBefore:14,spaceAfter:7});
+    } else if (tag === 'h3') {
+      drawBlock(getSegments(el,true,false,14), {sz:14,spaceBefore:12,spaceAfter:5});
+    } else if (tag === 'h4') {
+      drawBlock(getSegments(el,true,false,12), {sz:12,spaceBefore:8,spaceAfter:4});
+    } else if (tag === 'p') {
+      const segs = getSegments(el,false,false,11);
+      if (segs.length) drawBlock(segs, {sz:11,spaceBefore:2,spaceAfter:6});
+      else y -= 8;
+    } else if (tag === 'ul' || tag === 'ol') {
+      let idx = 0;
+      for (const li of el.querySelectorAll(':scope > li')) {
+        idx++;
+        const bullet = tag === 'ol' ? `${idx}.  ` : '*  ';
+        const segs = getSegments(li,false,false,11);
+        if (!segs.length) continue;
+        segs[0] = { ...segs[0], text: bullet + segs[0].text };
+        drawBlock(segs, {sz:11,indent:16,spaceBefore:1,spaceAfter:3});
+      }
+      y -= 4;
+    } else if (tag === 'table') {
+      const rows = [...el.querySelectorAll('tr')];
+      if (!rows.length) continue;
+      const cols = Math.max(...rows.map(r => r.children.length));
+      const colW = (PW - ML - MR) / Math.max(cols, 1);
+      const rowH = 20;
+      for (const row of rows) {
+        if (y < MB + rowH) newPage();
+        const cells = [...row.children];
+        let x = ML;
+        for (let c = 0; c < cols; c++) {
+          const cell = cells[c];
+          const isTh = cell && cell.tagName.toLowerCase() === 'th';
+          page.drawRectangle({ x, y: y - rowH + 4, width: colW, height: rowH,
+            borderColor: rgb(0.65,0.65,0.65), borderWidth: 0.5,
+            color: isTh ? rgb(0.18,0.18,0.28) : rgb(1,1,1), opacity: isTh ? 1 : 0 });
+          if (cell) {
+            const txt = sanitize(cell.textContent.trim());
+            const clipped = font.widthOfTextAtSize(txt, 9) > colW - 8
+              ? txt.slice(0, Math.floor((colW-14)/font.widthOfTextAtSize('a',9))) + '..'
+              : txt;
+            page.drawText(clipped, { x: x+5, y: y-11, size: 9,
+              font: isTh ? bFont : font, color: isTh ? rgb(0.9,0.9,1.0) : rgb(0.1,0.1,0.1) });
+          }
+          x += colW;
+        }
+        y -= rowH;
+      }
+      y -= 8;
+    }
+  }
+
+  setProgress('convert', 92);
+  const bytes = await pdf.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = convertFile.name.replace(/\.docx$/i,'') + '.pdf';
+  a.click(); URL.revokeObjectURL(url);
+  setProgress('convert', 100);
+  setStatus('convert','success','Done! Your PDF has been downloaded.');
+}
+
+/* ---------- PDF → DOCX ---------- */
+async function pdfToDocx() {
+  const ab = await convertFile.arrayBuffer();
+  setProgress('convert', 20);
+  setStatus('convert','info','Extracting text from PDF...');
+
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  setProgress('convert', 35);
+
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
+  const paras = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const pg = await pdf.getPage(i);
+    const tc = await pg.getTextContent();
+    setProgress('convert', 35 + Math.round((i / pdf.numPages) * 45));
+
+    paras.push(new Paragraph({
+      text: `Page ${i}`,
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 300, after: 100 }
+    }));
+
+    let buf = '';
+    for (let j = 0; j < tc.items.length; j++) {
+      const item = tc.items[j];
+      const next = tc.items[j+1];
+      buf += item.str;
+      const gap = next ? (next.transform[5] - item.transform[5]) : -999;
+      if (gap < -2 || !next) {
+        const line = buf.trim();
+        if (line) paras.push(new Paragraph({ children: [new TextRun({ text: line, size: 22 })] }));
+        buf = '';
+      } else if (item.hasEOL) {
+        buf += ' ';
+      }
+    }
+  }
+
+  const wordDoc = new Document({ sections: [{ properties: {}, children: paras }] });
+  const blob = await Packer.toBlob(wordDoc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = convertFile.name.replace(/\.pdf$/i,'') + '.docx';
+  a.click(); URL.revokeObjectURL(url);
+  setProgress('convert', 100);
+  setStatus('convert','success','Done! Your .docx file has been downloaded.');
+}
+
+/* ---------- VIEW ---------- */
+async function doView() {
+  if (!viewFile) return;
+  setStatus('view','info','Loading document...');
+  document.getElementById('viewer-area').style.display = 'block';
+  document.getElementById('pdf-canvas-container').innerHTML = '';
+  document.getElementById('docx-content').innerHTML = '';
+  document.getElementById('pdf-nav').style.display = 'none';
+
+  const ext = viewFile.name.split('.').pop().toLowerCase();
+  try {
+    if (ext === 'pdf') await viewPdf();
+    else if (ext === 'docx') await viewDocx();
+    else setStatus('view','error','Unsupported file type. Please upload .pdf or .docx.');
+  } catch(e) {
+    setStatus('view','error','Error loading file: ' + e.message);
+    console.error(e);
+  }
+}
+
+async function viewPdf() {
+  const ab = await viewFile.arrayBuffer();
+  pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise;
+  totalPages = pdfDoc.numPages; curPage = 1;
+  document.getElementById('pdf-nav').style.display = 'flex';
+  document.getElementById('view-status').style.display = 'none';
+  await renderPdfPage(curPage);
+}
+
+async function renderPdfPage(n) {
+  if (rendering) return;
+  rendering = true;
+  const container = document.getElementById('pdf-canvas-container');
+  container.innerHTML = '<div style="color:#6060a0;font-size:13px;padding:20px">Rendering page...</div>';
+  const pg = await pdfDoc.getPage(n);
+  const vp = pg.getViewport({ scale: 1.5 });
+  const canvas = document.createElement('canvas');
+  canvas.width = vp.width; canvas.height = vp.height;
+  container.innerHTML = '';
+  container.appendChild(canvas);
+  await pg.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+  document.getElementById('page-info').textContent = `Page ${n} of ${totalPages}`;
+  document.getElementById('btn-prev').disabled = n <= 1;
+  document.getElementById('btn-next').disabled = n >= totalPages;
+  rendering = false;
+}
+
+function prevPage() { if (curPage > 1 && !rendering) { curPage--; renderPdfPage(curPage); } }
+function nextPage() { if (curPage < totalPages && !rendering) { curPage++; renderPdfPage(curPage); } }
+
+async function viewDocx() {
+  const ab = await viewFile.arrayBuffer();
+  const res = await mammoth.convertToHtml({ arrayBuffer: ab });
+  document.getElementById('view-status').style.display = 'none';
+  const html = res.value || '<p style="color:#6060a0">Document appears empty.</p>';
+  document.getElementById('docx-content').innerHTML = html;
+}
+</script>
+</body>
+</html>
